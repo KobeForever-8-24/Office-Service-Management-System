@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.emos.api.db.dao.TbAmectDao">
+    <select id="searchAmectByPage" parameterType="HashMap" resultType="HashMap">
+        SELECT a.id,
+               a.uuid,
+               u.name,
+               d.dept_name AS deptName,
+               a.amount,
+               a.reason,
+               `at`.type,
+               a.`status`,
+               DATE_FORMAT(a.create_time, '%Y-%m-%d %H:%i') AS createTime,
+               IF(a.user_id=#{currentUserId}, "true", "false") AS mine
+        FROM tb_amect a
+        JOIN tb_amect_type `at` ON a.type_id = `at`.id
+        JOIN tb_user u ON u.id = a.user_id
+        JOIN tb_dept d ON u.dept_id = d.id
+        WHERE 1=1
+        <if test="userId != null">
+            AND u.id = #{userId}
+        </if>
+        <if test="name != null">
+            AND u.name LIKE '%${name}%'
+        </if>
+        <if test="deptId != null">
+            AND u.dept_id = #{deptId}
+        </if>
+        <if test="typeId != null">
+            AND at.id = #{typeId}
+        </if>
+        <if test="startDate != null &amp; endDate != null">
+            AND a.create_time BETWEEN #{startDate} AND #{endDate}
+        </if>
+        <if test="status != null">
+            AND a.`status` = #{status}
+        </if>
+        ORDER BY a.id DESC
+        LIMIT #{start}, #{length}
+    </select>
+    <select id="searchAmectCount" parameterType="HashMap" resultType="long">
+        SELECT COUNT(*)
+        FROM tb_amect a
+        JOIN tb_amect_type `at` ON a.type_id = `at`.id
+        JOIN tb_user u ON u.id = a.user_id
+        JOIN tb_dept d ON u.dept_id = d.id
+        WHERE 1=1
+        <if test="userId != null">
+            AND u.id = #{userId}
+        </if>
+        <if test="name != null">
+            AND u.name LIKE '%${name}%'
+        </if>
+        <if test="deptId != null">
+            AND u.dept_id = #{deptId}
+        </if>
+        <if test="typeId != null">
+            AND at.id = #{typeId}
+        </if>
+        <if test="startDate != null and endDate != null">
+            AND a.create_time BETWEEN #{startDate} AND #{endDate}
+        </if>
+        <if test="status!=null">
+            AND a.`status` = #{status}
+        </if>
+    </select>
+    <select id="insert" parameterType="com.example.emos.api.db.pojo.TbAmect">
+        INSERT INTO
+        SET uuid = #{uuId},
+            user_id = #{userId},
+            amount = #{amount},
+            type_id = #{typeId},
+            reason = #{reason},
+            status = 1
+    </select>
+    <select id="searchById" parameterType="int" resultType="HashMap">
+        SELECT uuid,
+               user_id AS userId,
+               amount,
+               type_id AS typeId,
+               reason
+        FROM tb_amect
+        WHERE id = #{id}
+    </select>
+    <update id="update" parameterType="HashMap">
+        UPDATE tb_amect
+        SET amount = #{amount},
+            type_id = #{typeId},
+            reason = #{reason}
+        WHERE id = #{id} AND status != 2
+    </update>
+    <delete id="deleteAmectByIds">
+        DELETE FROM tb_amect
+        WHERE status != 2 AND id IN
+        <foreach collection="array" open="(" separator="," close=")" item="one">
+            #{one}
+        </foreach>
+    </delete>
+    <select id="searchAmectByCondition" parameterType="HashMap" resultType="HashMap">
+        SELECT uuid,
+               amount,
+               prepay_id AS prepayId,
+               `status`
+        FROM tb_amect
+        WHERE id = #{amectId}
+        AND user_id = #{userId}
+        <if test="status != null">
+            AND `sttaus` = #{status}
+        </if>
+    </select>
+    <update id="updatePrepayId" parameterType="HashMap">
+        UPDATE tb_amect
+        SET prepay_id = #{prepayId}
+        WHERE id = #{amectId} AND status = 1
+    </update>
+    <update id="updateStatus" parameterType="HashMap">
+        UPDATE tb_amect
+        SET status = #{status}
+        WHERE uuid = #{uuid}
+    </update>
+    <select id="searchUserIdByUUID" parameterType="String" resultType="Integer">
+        SELECT user_id AS userId
+        FROM tb_amect
+        WHERE uuid = #{uuid}
+    </select>
+    <sql id="view_1">
+        WHERE 1=1
+        <if test="deptId!=null">
+            AND u.dept_id=#{deptId}
+        </if>
+        <if test="typeId!=null">
+            AND a.type_id=#{typeId}
+        </if>
+        <if test="startDate!=null &amp; endDate!=null">
+            AND a.create_time BETWEEN #{startDate} AND #{endDate}
+        </if>
+    </sql>
+    <sql id="view_2">
+        FROM tb_amect a
+        JOIN tb_amect_type `at` ON a.type_id=`at`.id
+        JOIN tb_user u ON a.user_id=u.id
+    </sql>
+    <sql id="view_3">
+        <if test="deptId!=null">
+            AND u.dept_id=#{deptId}
+        </if>
+        <if test="typeId!=null">
+            AND a.type_id=#{typeId}
+        </if>
+        <if test="startDate!=null &amp; endDate!=null">
+            AND a.create_time BETWEEN #{startDate} AND #{endDate}
+        </if>
+    </sql>
+    <select id="searchChart_1" parameterType="HashMap" resultType="HashMap">
+        SELECT COUNT(`at`.id) AS ct,
+        `at`.type
+        FROM tb_amect a
+        JOIN tb_amect_type `at` ON a.type_id=`at`.id
+        JOIN tb_user u ON a.user_id=u.id
+        <include refid="view_1"></include>
+        GROUP BY `at`.id
+    </select>
+    <select id="searchChart_2" parameterType="HashMap" resultType="HashMap">
+        SELECT "20元以内" AS title,
+        COUNT(*) AS ct
+        <include refid="view_2"/>
+        WHERE a.amount >=0 AND a.amount &lt; 20
+        <include refid="view_3"></include>
+        UNION
+        SELECT "50元以内" AS title,
+        COUNT(*) AS ct
+        <include refid="view_2"/>
+        WHERE a.amount >=20 AND a.amount &lt; 50
+        <include refid="view_3"></include>
+        UNION
+        SELECT "100元以内" AS title,
+        COUNT(*) AS ct
+        <include refid="view_2"/>
+        WHERE a.amount >=50 AND a.amount &lt; 100
+        <include refid="view_3"></include>
+        UNION
+        SELECT "200元以内" AS title,
+        COUNT(*) AS ct
+        <include refid="view_2"/>
+        WHERE a.amount >=100 AND a.amount &lt; 200
+        <include refid="view_3"></include>
+        UNION
+        SELECT "其他" AS title,
+        COUNT(*) AS ct
+        <include refid="view_2"/>
+        WHERE a.amount >=200
+        <include refid="view_3"></include>
+    </select>
+    <select id="searchChart_3" parameterType="HashMap" resultType="HashMap">
+        SELECT "未付款" AS title,
+        COUNT(*) AS ct
+        <include refid="view_2"/>
+        WHERE a.`status`=1
+        <include refid="view_3"></include>
+        UNION
+        SELECT "已付款" AS title,
+        COUNT(*) AS ct
+        <include refid="view_2"/>
+        WHERE a.`status`=2
+        <include refid="view_3"></include>
+    </select>
+    <select id="searchChart_4" parameterType="HashMap" resultType="HashMap">
+        SELECT MONTH(create_time) AS month,
+            COUNT(*) AS ct FROM tb_amect
+        WHERE YEAR(create_time)=#{year} AND `status`=#{status}
+        GROUP BY MONTH(create_time)
+    </select>
+</mapper>

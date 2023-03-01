@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.emos.api.db.dao.TbAmectTypeDao">
+    <select id="searchAllAmectType" resultType="com.example.emos.api.db.pojo.TbAmectType">
+        SELECT id,
+               type,
+               money,
+               systemic
+        FROM tb_amect_type
+    </select>
+    <select id="searchAmectByPage" parameterType="HashMap" resultType="HashMap">
+        SELECT a.id,
+               a.uuid,
+               u.name,
+               d.dept_name AS deptName,
+               a.amount,
+               a.reason,
+               `at`.type,
+               a.`status`,
+               DATE_FORMAT(a.create_time, '%Y-%m-%d %H:%i') AS createTime,
+               IF(a.user_id = #{currentUserId}, "true", "false") AS mine
+        FROM tb_amect a
+        JOIN tb_amect_type `at` On a.type_id = `at`.id
+        JOIN tb_user u ON u.id = a.user_id
+        JOIN tb_dept d ON u.dept_id = d.id
+        WHERE 1=1
+        <if test="userId != null">
+            AND u.id = #{userId}
+        </if>
+        <if test="name != null">
+            AND u.name LIKE '%${name}%'
+        </if>
+        <if test="deptId != null">
+            AND u.dept_id = #{deptId}
+        </if>
+        <if test="typeId != null">
+            AND at.id = #{typeId}
+        </if>
+        <if test="startDate != null &amp; endDate != null">
+            AND a.create_time BETWEEN #{startDate} AND #{endDate}
+        </if>
+        <if test="status != null">
+            AND a.`status` = #{status}
+        </if>
+        ORDER BY a.id DESC
+        LIMIT #{start}, #{length}
+    </select>
+</mapper>
